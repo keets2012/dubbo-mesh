@@ -9,10 +9,16 @@ import com.coreos.jetcd.options.GetOption;
 import com.coreos.jetcd.options.PutOption;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.actuate.endpoint.SystemPublicMetrics;
+import org.springframework.boot.actuate.metrics.Metric;
+import org.springframework.stereotype.Component;
 
 import java.text.MessageFormat;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.Executors;
 
 public class EtcdRegistry implements IRegistry {
@@ -25,6 +31,10 @@ public class EtcdRegistry implements IRegistry {
     private Lease lease;
     private KV kv;
     private long leaseId;
+    private List<Endpoint> endpoints;
+
+    @Autowired
+    private SystemPublicMetrics systemPublicMetrics;
 
     public EtcdRegistry(String registryAddress) {
         Client client = Client.builder().endpoints(registryAddress).build();
@@ -44,7 +54,7 @@ public class EtcdRegistry implements IRegistry {
             try {
                 int port = Integer.valueOf(System.getProperty("server.port"));
                 register("com.alibaba.dubbo.performance.demo.provider.IHelloService", port + 50);
-                logger.info("provider-agent server register to etcd at port {}",port + 50);
+                logger.info("provider-agent server register to etcd at port {}", port + 50);
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -54,11 +64,27 @@ public class EtcdRegistry implements IRegistry {
     // 向ETCD中注册服务
     public void register(String serviceName, int port) throws Exception {
         // 服务注册的key为:    /dubbomesh/com.some.package.IHelloService/192.168.100.100:2000
-        String strKey = MessageFormat.format("/{0}/{1}/{2}:{3}", rootPath, serviceName, IpHelper.getHostIp(), String.valueOf(port));
+
+        String strKey = MessageFormat.format("/{0}/{1}/{2}/{3}:{4}", rootPath, serviceName, getSystemLoad(), IpHelper.getHostIp(), String.valueOf(port));
         ByteSequence key = ByteSequence.fromString(strKey);
         ByteSequence val = ByteSequence.fromString("");     // 目前只需要创建这个key,对应的value暂不使用,先留空
         kv.put(key, val, PutOption.newBuilder().withLeaseId(leaseId).build()).get();
         logger.info("Register a new service at:" + strKey);
+    }
+
+    private String getSystemLoad() {
+        Collection<Metric<?>> metrics = systemPublicMetrics.metrics();
+        Optional<Metric<?>> freeMemoryMetric = metrics.stream()
+                .filter(t -> "mem.free".equals(t.getName()))
+                .findFirst();
+
+        if (!freeMemoryMetric.isPresent()) {
+            System.out.println("can not get memory");
+        }
+        long freeMemory = freeMemoryMetric.get()
+                .getValue()
+                .longValue();
+        return String.valueOf(freeMemory);
     }
 
     // 发送心跳到ETCD,表明该host是活着的
@@ -86,13 +112,14 @@ public class EtcdRegistry implements IRegistry {
 
         for (com.coreos.jetcd.data.KeyValue kv : response.getKvs()) {
             String s = kv.getKey().toStringUtf8();
+            String cpu = s.split("/")[2];
             int index = s.lastIndexOf("/");
             String endpointStr = s.substring(index + 1, s.length());
 
             String host = endpointStr.split(":")[0];
             int port = Integer.valueOf(endpointStr.split(":")[1]);
 
-            endpoints.add(new Endpoint(host, port));
+            endpoints.add(new Endpoint(host, port, cpu));
         }
         return endpoints;
     }
