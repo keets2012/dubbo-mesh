@@ -48,11 +48,11 @@ public class EtcdRegistry implements IRegistry {
 
         keepAlive();
 
-        String type = "provider";// 获取type参数
+        String type = System.getProperty("type");   // 获取type参数
         if ("provider".equals(type)) {
             // 如果是provider，去etcd注册服务
             try {
-                int port = 20000;
+                int port = Integer.valueOf(System.getProperty("server.port"));
                 register("com.alibaba.dubbo.performance.demo.provider.IHelloService", port + 50);
                 SystemInfoReplicator systemInfoReplicator = new SystemInfoReplicator(this, 3, "com.alibaba.dubbo.performance.demo.provider.IHelloService", port + 50);
                 systemInfoReplicator.start(3);
@@ -122,8 +122,13 @@ public class EtcdRegistry implements IRegistry {
 
             String cpu = kv.getValue().toStringUtf8();
 
-            endpoints.add(new Endpoint(host, port, cpu));
+            endpoints.add(new Endpoint(host, port, cpu, serviceName));
         }
+        this.endpoints = endpoints;
         return endpoints;
+    }
+
+    public List<Endpoint> getEndpoints() {
+        return this.endpoints;
     }
 }

@@ -1,17 +1,27 @@
 package com.alibaba.dubbo.performance.demo.agent.registry;
 
 import java.util.Objects;
+import java.util.UUID;
 
 public class Endpoint {
+    private String routeId;
     private final String host;
     private final int port;
 
+    private String serviceName;
     private String cpuLoad;
 
-    public Endpoint(String host, int port, String cpuLoad) {
+    public Endpoint(String host, int port, String cpuLoad, String serviceName) {
+
         this.host = host;
         this.cpuLoad = cpuLoad;
         this.port = port;
+        this.serviceName = serviceName;
+        this.routeId = UUID.randomUUID().toString();
+    }
+
+    public String getRouteId() {
+        return routeId;
     }
 
     public String getHost() {
@@ -26,24 +36,21 @@ public class Endpoint {
         return cpuLoad;
     }
 
+    public String getServiceName() {
+        return serviceName;
+    }
+
+    @Override
     public String toString() {
-        return host + ":" + port + "/" + cpuLoad;
+        return "Endpoint{" +
+                "routeId='" + routeId + '\'' +
+                ", host='" + host + '\'' +
+                ", port=" + port +
+                ", serviceName='" + serviceName + '\'' +
+                ", cpuLoad='" + cpuLoad + '\'' +
+                '}';
     }
 
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        Endpoint endpoint = (Endpoint) o;
-        return port == endpoint.port &&
-                Objects.equals(host, endpoint.host) &&
-                Objects.equals(cpuLoad, endpoint.cpuLoad);
-    }
 
-    @Override
-    public int hashCode() {
-
-        return Objects.hash(host, port, cpuLoad);
-    }
 }

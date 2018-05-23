@@ -8,4 +8,6 @@ public interface IRegistry {
     void register(String serviceName, int port) throws Exception;
 
     List<Endpoint> find(String serviceName) throws Exception;
+
+    List<Endpoint> getEndpoints();
 }
