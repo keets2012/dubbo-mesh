@@ -89,7 +89,7 @@ public class SystemInfoReplicator implements Runnable {
             // TODO 重新注册前建议检查本地信息变化，如有变化才发起重新注册
             etcdRegistry.register(serviceName, port);
             etcdRegistry.find(serviceName);
-            logger.info("replicate new info to etcd");
+            logger.info("Replicate new info to etcd");
         } catch (Exception e) {
             logger.warn("There was a problem with the system info replicator", e);
         } finally {

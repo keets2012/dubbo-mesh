@@ -147,7 +147,7 @@ public class EtcdRegistry implements IRegistry {
         // 全量拉取
         if(forceFullRegistryFetch){
             getAndStoreFullRegistry();
-            logger.info("fetch full registry");
+            logger.info("Fetch full registry");
         // 增量式拉取
         }else{
             getAndUpdateDelta();
