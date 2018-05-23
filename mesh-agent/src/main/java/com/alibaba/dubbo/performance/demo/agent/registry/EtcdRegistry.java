@@ -48,14 +48,14 @@ public class EtcdRegistry implements IRegistry {
 
         keepAlive();
 
-        String type = System.getProperty("type");   // 获取type参数
+        String type = "provider";// 获取type参数
         if ("provider".equals(type)) {
             // 如果是provider，去etcd注册服务
             try {
-                int port = Integer.valueOf(System.getProperty("server.port"));
+                int port = 20000;
                 register("com.alibaba.dubbo.performance.demo.provider.IHelloService", port + 50);
-                SystemInfoReplicator systemInfoReplicator = new SystemInfoReplicator(this, 30, "com.alibaba.dubbo.performance.demo.provider.IHelloService", port + 50);
-                systemInfoReplicator.start(30);
+                SystemInfoReplicator systemInfoReplicator = new SystemInfoReplicator(this, 3, "com.alibaba.dubbo.performance.demo.provider.IHelloService", port + 50);
+                systemInfoReplicator.start(3);
                 logger.info("provider-agent server register to etcd at port {}", port + 50);
             } catch (Exception e) {
                 e.printStackTrace();
@@ -67,9 +67,9 @@ public class EtcdRegistry implements IRegistry {
     public void register(String serviceName, int port) throws Exception {
         // 服务注册的key为:    /dubbomesh/com.some.package.IHelloService/192.168.100.100:2000
 
-        String strKey = MessageFormat.format("/{0}/{1}/{2}/{3}:{4}", rootPath, serviceName, getSystemLoad(), IpHelper.getHostIp(), String.valueOf(port));
+        String strKey = MessageFormat.format("/{0}/{1}/{2}:{3}", rootPath, serviceName, IpHelper.getHostIp(), String.valueOf(port));
         ByteSequence key = ByteSequence.fromString(strKey);
-        ByteSequence val = ByteSequence.fromString("");     // 目前只需要创建这个key,对应的value暂不使用,先留空
+        ByteSequence val = ByteSequence.fromString(getSystemLoad());     // 目前只需要创建这个key,对应的value暂不使用,先留空
         kv.put(key, val, PutOption.newBuilder().withLeaseId(leaseId).build()).get();
         logger.info("Register a new service at:" + strKey);
     }
@@ -114,12 +114,13 @@ public class EtcdRegistry implements IRegistry {
 
         for (com.coreos.jetcd.data.KeyValue kv : response.getKvs()) {
             String s = kv.getKey().toStringUtf8();
-            String cpu = s.split("/")[2];
             int index = s.lastIndexOf("/");
             String endpointStr = s.substring(index + 1, s.length());
 
             String host = endpointStr.split(":")[0];
             int port = Integer.valueOf(endpointStr.split(":")[1]);
+
+            String cpu = kv.getValue().toStringUtf8();
 
             endpoints.add(new Endpoint(host, port, cpu));
         }

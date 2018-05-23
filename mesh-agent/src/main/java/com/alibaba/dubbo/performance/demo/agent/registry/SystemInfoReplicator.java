@@ -1,5 +1,6 @@
 package com.alibaba.dubbo.performance.demo.agent.registry;
 
+import com.alibaba.fastjson.JSON;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -86,6 +87,8 @@ public class SystemInfoReplicator implements Runnable {
     public void run() {
         try {
             etcdRegistry.register(serviceName, port);
+            String s = JSON.toJSONString(etcdRegistry.find(serviceName));
+            logger.info(s);
         } catch (Exception e) {
             logger.warn("There was a problem with the system info replicator", e);
         } finally {
