@@ -22,6 +22,8 @@ import java.util.concurrent.Callable;
 @Component
 public class ConsumerClient {
 
+    Logger logger = LoggerFactory.getLogger(ConsumerClient.class);
+
     private IRegistry iRegistry;
 
     @Autowired
@@ -30,7 +32,6 @@ public class ConsumerClient {
         System.out.println("==>ConsumerClient构造...");
     }
 
-    Logger logger = LoggerFactory.getLogger(ConsumerClient.class);
 
     ConsumerAgentNettyClient consumerAgentNettyClient = new ConsumerAgentNettyClient(iRegistry);
 
