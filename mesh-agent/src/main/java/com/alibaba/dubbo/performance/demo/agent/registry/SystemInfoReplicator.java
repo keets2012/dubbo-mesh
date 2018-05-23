@@ -29,9 +29,7 @@ public class SystemInfoReplicator implements Runnable {
     private final AtomicBoolean started;
 
 
-
-
-    SystemInfoReplicator(EtcdRegistry etcdRegistry, int replicationIntervalSeconds, String serviceName, int port){
+    SystemInfoReplicator(EtcdRegistry etcdRegistry, int replicationIntervalSeconds, String serviceName, int port) {
         this.etcdRegistry = etcdRegistry;
         this.replicationIntervalSeconds = replicationIntervalSeconds;
         this.serviceName = serviceName;
@@ -47,8 +45,8 @@ public class SystemInfoReplicator implements Runnable {
 
     }
 
-    public void start(int delayMs){
-        if(started.compareAndSet(false, true)){
+    public void start(int delayMs) {
+        if (started.compareAndSet(false, true)) {
             Future next = scheduler.schedule(this, delayMs, TimeUnit.SECONDS);
             taskRef.set(next);
         }
@@ -57,23 +55,21 @@ public class SystemInfoReplicator implements Runnable {
 
     /**
      * 用于事件监听的回调
+     *
      * @return
      */
-    public boolean onDemandUpdate(){
+    public boolean onDemandUpdate() {
         if (!scheduler.isShutdown()) {
-            scheduler.submit(new Runnable() {
-                @Override
-                public void run() {
-                    logger.debug("Executing on-demand update of local InstanceInfo");
+            scheduler.submit(() -> {
+                logger.debug("Executing on-demand update of local InstanceInfo");
 
-                    Future latestTask= taskRef.get();
-                    if (latestTask != null && !latestTask.isDone()) {
-                        logger.debug("Canceling the latest scheduled update");
-                        latestTask.cancel(false);
-                    }
-
-                    SystemInfoReplicator.this.run();
+                Future latestTask = taskRef.get();
+                if (latestTask != null && !latestTask.isDone()) {
+                    logger.debug("Canceling the latest scheduled update");
+                    latestTask.cancel(false);
                 }
+
+                SystemInfoReplicator.this.run();
             });
             return true;
         } else {
@@ -84,7 +80,6 @@ public class SystemInfoReplicator implements Runnable {
     }
 
     /**
-     *
      * 获取本地的负载信息，如果需要的话重新注册
      */
     @Override
@@ -93,7 +88,7 @@ public class SystemInfoReplicator implements Runnable {
             etcdRegistry.register(serviceName, port);
         } catch (Exception e) {
             logger.warn("There was a problem with the system info replicator", e);
-        }finally {
+        } finally {
             Future next = scheduler.schedule(this, replicationIntervalSeconds, TimeUnit.SECONDS);
             taskRef.set(next);
         }

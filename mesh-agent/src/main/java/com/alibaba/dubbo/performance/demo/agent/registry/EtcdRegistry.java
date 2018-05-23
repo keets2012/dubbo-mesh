@@ -33,10 +33,10 @@ public class EtcdRegistry implements IRegistry {
     private long leaseId;
     private List<Endpoint> endpoints;
 
-    @Autowired
-    private SystemPublicMetrics systemPublicMetrics;
+    private final SystemPublicMetrics systemPublicMetrics;
 
-    public EtcdRegistry(String registryAddress) {
+    public EtcdRegistry(String registryAddress, SystemPublicMetrics systemPublicMetrics) {
+        this.systemPublicMetrics = systemPublicMetrics;
         Client client = Client.builder().endpoints(registryAddress).build();
         this.lease = client.getLeaseClient();
         this.kv = client.getKVClient();

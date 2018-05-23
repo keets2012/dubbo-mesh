@@ -21,6 +21,8 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpRequestDecoder;
 import io.netty.handler.codec.http.HttpResponseEncoder;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -30,9 +32,12 @@ import java.util.concurrent.Executors;
  * company qianmi.com
  * Date 2018-05-22
  */
+@Component
 public class ConsumerAgentHttpServerInitializer extends ChannelInitializer<SocketChannel> {
 
-    ConsumerClient consumerClient = new ConsumerClient();
+    @Autowired
+    private ConsumerClient consumerClient;
+
     ExecutorService executorService = Executors.newFixedThreadPool(128);
 
     @Override
@@ -41,6 +46,6 @@ public class ConsumerAgentHttpServerInitializer extends ChannelInitializer<Socke
         p.addLast("encoder", new HttpResponseEncoder());
         p.addLast("decoder", new HttpRequestDecoder());
         p.addLast("aggregator", new HttpObjectAggregator(10 * 1024 * 1024));
-        p.addLast(new ConsumerAgentHttpServerHandler(consumerClient,executorService));
+        p.addLast(new ConsumerAgentHttpServerHandler(consumerClient, executorService));
     }
 }

@@ -24,10 +24,11 @@ public class ConsumerAgentNettyClient {
 
     private AgentClientConnecManager connectManager;
     RoundRobinLoadBalance loadBalance = new RoundRobinLoadBalance();
-    private IRegistry registry = new EtcdRegistry(System.getProperty("etcd.url"));
+    private IRegistry registry;
     private Object lock = new Object();
 
-    public ConsumerAgentNettyClient() {
+    public ConsumerAgentNettyClient(IRegistry etcdRegistry) {
+        this.registry = etcdRegistry;
         this.connectManager = new AgentClientConnecManager();
         logger.info("ConsumerAgentNettyClient构造中...");
     }
