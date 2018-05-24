@@ -1,6 +1,5 @@
 package com.alibaba.dubbo.performance.demo.agent.registry;
 
-import com.alibaba.fastjson.JSON;
 import com.coreos.jetcd.Client;
 import com.coreos.jetcd.KV;
 import com.coreos.jetcd.Lease;
@@ -14,8 +13,13 @@ import org.springframework.boot.actuate.endpoint.SystemPublicMetrics;
 import org.springframework.boot.actuate.metrics.Metric;
 
 import java.text.MessageFormat;
-import java.util.*;
-import java.util.concurrent.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -30,12 +34,14 @@ public class EtcdRegistry implements IRegistry {
     private KV kv;
     private long leaseId;
     private final AtomicLong fetchRegistryGeneration;
+    private final int leaseInterval;
     private final AtomicReference<Map<String, List<Endpoint>>> localRegistry = new AtomicReference<>();
 
     private List<Endpoint> endpoints;
     private final SystemPublicMetrics systemPublicMetrics;
 
-    public EtcdRegistry(String registryAddress, SystemPublicMetrics systemPublicMetrics) {
+    public EtcdRegistry(String registryAddress, SystemPublicMetrics systemPublicMetrics, int interval) {
+        this.leaseInterval = interval;
         this.systemPublicMetrics = systemPublicMetrics;
         fetchRegistryGeneration = new AtomicLong(0);
         Client client = Client.builder().endpoints(registryAddress).build();
@@ -59,7 +65,7 @@ public class EtcdRegistry implements IRegistry {
         // TODO 2018-05-23 建议后面使用watch机制，避免每次全量更新
         // 30s更新一次全量的本地注册表
         FetchRegistryTask fetchRegistryTask = new FetchRegistryTask(this, 8);
-        fetchRegistryTask.start(30);
+        fetchRegistryTask.start(leaseInterval);
         String type = System.getProperty("type");   // 获取type参数
         if ("provider".equals(type)) {
             // 如果是provider，去etcd注册服务
@@ -67,8 +73,8 @@ public class EtcdRegistry implements IRegistry {
                 int port = Integer.valueOf(System.getProperty("server.port"));
                 register("com.alibaba.dubbo.performance.demo.provider.IHelloService", port + 50);
                 // 30s重新注册一次
-                SystemInfoReplicator systemInfoReplicator = new SystemInfoReplicator(this, 30, "com.alibaba.dubbo.performance.demo.provider.IHelloService", port + 50);
-                systemInfoReplicator.start(30);
+                SystemInfoReplicator systemInfoReplicator = new SystemInfoReplicator(this, leaseInterval, "com.alibaba.dubbo.performance.demo.provider.IHelloService", port + 50);
+                systemInfoReplicator.start(leaseInterval);
                 logger.info("provider-agent server register to etcd at port {}", port + 50);
             } catch (Exception e) {
                 e.printStackTrace();

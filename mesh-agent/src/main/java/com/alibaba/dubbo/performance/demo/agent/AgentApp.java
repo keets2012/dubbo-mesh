@@ -7,6 +7,7 @@ import com.alibaba.dubbo.performance.demo.agent.registry.IRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.actuate.endpoint.SystemPublicMetrics;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -18,6 +19,9 @@ import org.springframework.context.annotation.Configuration;
 public class AgentApp {
 
     static final Logger logger = LoggerFactory.getLogger(AgentApp.class);
+
+    @Value("${etcd.interval}")
+    private int interval;
 
     // agent会作为sidecar，部署在每一个Provider和Consumer机器上
     // 在Provider端启动agent时，添加JVM参数
@@ -42,6 +46,6 @@ public class AgentApp {
 
     @Bean
     public IRegistry etcdRegistry(SystemPublicMetrics systemPublicMetrics) {
-        return new EtcdRegistry(System.getProperty("etcd.url"), systemPublicMetrics);
+        return new EtcdRegistry(System.getProperty("etcd.url"), systemPublicMetrics, interval);
     }
 }
