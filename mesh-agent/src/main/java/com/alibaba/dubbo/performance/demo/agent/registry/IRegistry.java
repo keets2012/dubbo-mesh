@@ -10,4 +10,7 @@ public interface IRegistry {
     List<Endpoint> find(String serviceName) throws Exception;
 
     List<Endpoint> getEndpoints();
+
+    List<Endpoint> getEndpoints(String serviceName);
+
 }

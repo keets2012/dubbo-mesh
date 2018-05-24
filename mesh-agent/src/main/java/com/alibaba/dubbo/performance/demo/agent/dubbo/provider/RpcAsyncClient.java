@@ -1,4 +1,4 @@
-package com.alibaba.dubbo.performance.demo.agent.dubbo;
+package com.alibaba.dubbo.performance.demo.agent.dubbo.provider;
 
 import com.alibaba.dubbo.performance.demo.agent.dubbo.model.*;
 import io.netty.channel.Channel;
@@ -13,15 +13,14 @@ public class RpcAsyncClient {
     private Logger logger = LoggerFactory.getLogger(RpcAsyncClient.class);
 
     private ConnecManager connectManager;
-
+    private Channel channel;
     public RpcAsyncClient() {
         this.connectManager = new ConnecManager();
+        this.channel = connectManager.getChannel();
         logger.info("构造RpcAsyncClient...");
     }
 
     public RpcCallbackFuture<ProviderAgentRpcResponse> invoke(String interfaceName, String method, String parameterTypesString, String parameter) throws Exception {
-
-        Channel channel = connectManager.getChannel();
 
         RpcInvocation invocation = new RpcInvocation();
         invocation.setMethodName(method);

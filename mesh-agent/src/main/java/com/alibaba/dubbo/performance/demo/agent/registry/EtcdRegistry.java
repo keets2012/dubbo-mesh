@@ -140,16 +140,21 @@ public class EtcdRegistry implements IRegistry {
 
     @Override
     public List<Endpoint> getEndpoints() {
-        return endpoints;
+        return this.endpoints;
+    }
+
+    @Override
+    public List<Endpoint> getEndpoints(String serviceName) {
+        return this.localRegistry.get().get(serviceName);
     }
 
     public boolean fetchRegistry(boolean forceFullRegistryFetch) throws Exception {
         // 全量拉取
-        if(forceFullRegistryFetch){
+        if (forceFullRegistryFetch) {
             getAndStoreFullRegistry();
             logger.info("Fetch full registry");
-        // 增量式拉取
-        }else{
+            // 增量式拉取
+        } else {
             getAndUpdateDelta();
         }
         return true;
@@ -165,7 +170,7 @@ public class EtcdRegistry implements IRegistry {
         Map<String, List<Endpoint>> registry = new HashMap<>();
         for (com.coreos.jetcd.data.KeyValue kv : response.getKvs()) {
             String s = kv.getKey().toStringUtf8();
-            String [] endpointInfos = s.split("/");
+            String[] endpointInfos = s.split("/");
             String serviceName = endpointInfos[2];
             List<Endpoint> endpoints = registry.computeIfAbsent(serviceName, k -> new ArrayList<>());
             String endpointStr = endpointInfos[3];
@@ -174,17 +179,15 @@ public class EtcdRegistry implements IRegistry {
             String cpu = kv.getValue().toStringUtf8();
             endpoints.add(new Endpoint(host, port, cpu, serviceName));
         }
-        if(fetchRegistryGeneration.compareAndSet(currentGeneration, currentGeneration + 1)){
+        if (fetchRegistryGeneration.compareAndSet(currentGeneration, currentGeneration + 1)) {
             localRegistry.set(registry);
         }
     }
 
     //TODO 2018-05-23 建议该方法使用watch监听注册表变化，实现增量式刷新
-    private void getAndUpdateDelta(){
+    private void getAndUpdateDelta() {
 
     }
-
-
 
 
 }

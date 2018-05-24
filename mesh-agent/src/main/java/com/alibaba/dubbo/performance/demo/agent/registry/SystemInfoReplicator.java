@@ -91,7 +91,7 @@ public class SystemInfoReplicator implements Runnable {
             etcdRegistry.find(serviceName);
             logger.info("Replicate new info to etcd");
         } catch (Exception e) {
-            logger.warn("There was a problem with the system info replicator", e);
+            logger.warn("There was a problem with the system info replicator for {}", e);
         } finally {
             Future next = scheduler.schedule(this, replicationIntervalSeconds, TimeUnit.SECONDS);
             taskRef.set(next);

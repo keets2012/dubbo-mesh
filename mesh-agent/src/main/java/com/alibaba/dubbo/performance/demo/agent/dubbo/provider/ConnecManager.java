@@ -1,4 +1,4 @@
-package com.alibaba.dubbo.performance.demo.agent.dubbo;
+package com.alibaba.dubbo.performance.demo.agent.dubbo.provider;
 
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.UnpooledByteBufAllocator;
@@ -25,7 +25,7 @@ public class ConnecManager {
         System.out.println("ConnecManager构造...");
     }
 
-    public Channel getChannel() throws Exception {
+    public Channel getChannel() {
         if (null != channel) {
             return channel;
         }

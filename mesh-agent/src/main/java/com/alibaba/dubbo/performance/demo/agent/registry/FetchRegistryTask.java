@@ -14,7 +14,7 @@ import java.util.concurrent.atomic.AtomicReference;
 /**
  * Created by xuan on 2018/5/23.
  */
-public class FetchRegistryTask implements Runnable{
+public class FetchRegistryTask implements Runnable {
 
 
     private Logger logger = LoggerFactory.getLogger(FetchRegistryTask.class);
@@ -24,7 +24,6 @@ public class FetchRegistryTask implements Runnable{
     private final ScheduledExecutorService scheduler;
     private final AtomicReference<Future> taskRef;
     private final AtomicBoolean started;
-
 
 
     FetchRegistryTask(EtcdRegistry etcdRegistry, int replicationIntervalSeconds) {
@@ -62,6 +61,6 @@ public class FetchRegistryTask implements Runnable{
             Future next = scheduler.schedule(this, replicationIntervalSeconds, TimeUnit.SECONDS);
             taskRef.set(next);
         }
-        
+
     }
 }

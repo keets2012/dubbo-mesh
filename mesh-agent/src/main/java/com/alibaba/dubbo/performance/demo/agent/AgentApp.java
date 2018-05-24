@@ -36,11 +36,12 @@ public class AgentApp {
         if ("consumer".equals(type)) {
             new Thread(() -> new ConsumerAgentHttpServer().startServer()).start();
         }
+
     }
 
 
     @Bean
     public IRegistry etcdRegistry(SystemPublicMetrics systemPublicMetrics) {
-        return new EtcdRegistry("http://192.168.1.202:2379", systemPublicMetrics);
+        return new EtcdRegistry(System.getProperty("etcd.url"), systemPublicMetrics);
     }
 }

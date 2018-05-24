@@ -38,9 +38,10 @@ public class CpuLoadBalance implements LoadBalance {
 
     @Override
     public Endpoint select(RpcInvocation invocation) {
-        this.endpoints = iRegistry.getEndpoints();
+        String serviceName = "provider";
+        this.endpoints = iRegistry.getEndpoints(serviceName);
         this.endpoints.stream().forEach(this::addWeightConfig);
-        return filter("provider");
+        return filter(serviceName);
     }
 
     public Endpoint filter(String serviceName) {
@@ -64,7 +65,8 @@ public class CpuLoadBalance implements LoadBalance {
                 }
             }
         });
-        return this.endpoints.stream().filter((endpoint) -> endpoint.getServiceName().equals(serviceName) && endpoint.getRouteId().equals(routeId.get())).findFirst().orElse(this.endpoints.get(0));
+        //endpoint.getServiceName().equals(serviceName) &&
+        return this.endpoints.stream().filter((endpoint) -> endpoint.getRouteId().equals(routeId.get())).findFirst().orElse(this.endpoints.get(0));
     }
 
     private void addWeightConfig(Endpoint endpoint) {
