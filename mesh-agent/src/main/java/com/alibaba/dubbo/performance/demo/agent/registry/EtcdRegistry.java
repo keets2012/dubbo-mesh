@@ -58,8 +58,8 @@ public class EtcdRegistry implements IRegistry {
         }
         // TODO 2018-05-23 建议后面使用watch机制，避免每次全量更新
         // 30s更新一次全量的本地注册表
-        FetchRegistryTask fetchRegistryTask = new FetchRegistryTask(this, 30);
-        fetchRegistryTask.start(30);
+        FetchRegistryTask fetchRegistryTask = new FetchRegistryTask(this, 8);
+        fetchRegistryTask.start(8);
         String type = System.getProperty("type");   // 获取type参数
         if ("provider".equals(type)) {
             // 如果是provider，去etcd注册服务
@@ -67,8 +67,8 @@ public class EtcdRegistry implements IRegistry {
                 int port = Integer.valueOf(System.getProperty("server.port"));
                 register("com.alibaba.dubbo.performance.demo.provider.IHelloService", port + 50);
                 // 30s重新注册一次
-                SystemInfoReplicator systemInfoReplicator = new SystemInfoReplicator(this, 30, "com.alibaba.dubbo.performance.demo.provider.IHelloService", port + 50);
-                systemInfoReplicator.start(30);
+                SystemInfoReplicator systemInfoReplicator = new SystemInfoReplicator(this, 8, "com.alibaba.dubbo.performance.demo.provider.IHelloService", port + 50);
+                systemInfoReplicator.start(8);
                 logger.info("provider-agent server register to etcd at port {}", port + 50);
             } catch (Exception e) {
                 e.printStackTrace();

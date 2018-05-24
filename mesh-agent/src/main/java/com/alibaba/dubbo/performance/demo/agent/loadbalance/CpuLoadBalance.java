@@ -69,6 +69,11 @@ public class CpuLoadBalance implements LoadBalance {
         return this.endpoints.stream().filter((endpoint) -> endpoint.getRouteId().equals(routeId.get())).findFirst().orElse(this.endpoints.get(0));
     }
 
+
+    public List<Endpoint> getEndpoints() {
+        return endpoints;
+    }
+
     private void addWeightConfig(Endpoint endpoint) {
         String group = endpoint.getServiceName();
         GroupWeightConfig c = groupWeights.get(group);

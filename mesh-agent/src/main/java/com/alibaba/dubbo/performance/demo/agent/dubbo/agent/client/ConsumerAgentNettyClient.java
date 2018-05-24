@@ -5,6 +5,8 @@ import com.alibaba.dubbo.performance.demo.agent.dubbo.agent.model.AgentResponse;
 import com.alibaba.dubbo.performance.demo.agent.dubbo.agent.model.ConsumerAgentResponseFutureHolder;
 import com.alibaba.dubbo.performance.demo.agent.dubbo.model.ProviderAgentRpcResponse;
 import com.alibaba.dubbo.performance.demo.agent.dubbo.model.RpcCallbackFuture;
+import com.alibaba.dubbo.performance.demo.agent.loadbalance.CpuLoadBalance;
+import com.alibaba.dubbo.performance.demo.agent.loadbalance.LoadBalance;
 import com.alibaba.dubbo.performance.demo.agent.loadbalance.RoundRobinLoadBalance;
 import com.alibaba.dubbo.performance.demo.agent.registry.Endpoint;
 import com.alibaba.dubbo.performance.demo.agent.registry.EtcdRegistry;
@@ -23,24 +25,25 @@ public class ConsumerAgentNettyClient {
     Logger logger = LoggerFactory.getLogger(ConsumerAgentNettyClient.class);
 
     private AgentClientConnecManager connectManager;
-    RoundRobinLoadBalance loadBalance = new RoundRobinLoadBalance();
+    LoadBalance loadBalance;
     private IRegistry registry;
     private Object lock = new Object();
 
     public ConsumerAgentNettyClient(IRegistry etcdRegistry) {
         this.registry = etcdRegistry;
+        loadBalance = new CpuLoadBalance(registry);
         this.connectManager = new AgentClientConnecManager();
         logger.info("ConsumerAgentNettyClient构造中...");
     }
 
     public RpcCallbackFuture<AgentResponse> invoke(String interfaceName, String method, String parameterTypesString, String parameter) throws Exception {
-        if (null == loadBalance.getEndpoints()) {
+/*        if (null == loadBalance.getEndpoints()) {
             synchronized (lock) {
                 if (null == loadBalance.getEndpoints()) {
                     loadBalance.setEndpoints(registry.find("com.alibaba.dubbo.performance.demo.provider.IHelloService"));
                 }
             }
-        }
+        }*/
         // 简单的负载均衡，随机取一个
         Endpoint endpoint = loadBalance.select(null);
         Channel channel = connectManager.getChannel(endpoint);

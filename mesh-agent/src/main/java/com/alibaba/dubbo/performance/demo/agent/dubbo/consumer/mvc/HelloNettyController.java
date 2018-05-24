@@ -3,10 +3,10 @@ package com.alibaba.dubbo.performance.demo.agent.dubbo.consumer.mvc;
 import com.alibaba.dubbo.performance.demo.agent.dubbo.agent.client.ConsumerAgentMvcClient;
 import com.alibaba.dubbo.performance.demo.agent.loadbalance.RoundRobinLoadBalance;
 import com.alibaba.dubbo.performance.demo.agent.registry.Endpoint;
-import com.alibaba.dubbo.performance.demo.agent.registry.EtcdRegistry;
 import com.alibaba.dubbo.performance.demo.agent.registry.IRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -16,7 +16,8 @@ public class HelloNettyController {
 
     private Logger logger = LoggerFactory.getLogger(HelloNettyController.class);
 
-    private IRegistry registry = new EtcdRegistry(System.getProperty("etcd.url"));
+    @Autowired
+    private IRegistry registry;
 
     RoundRobinLoadBalance loadBalance = new RoundRobinLoadBalance();
     private Object lock = new Object();
