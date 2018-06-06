@@ -15,17 +15,24 @@
  */
 package com.alibaba.dubbo.performance.demo.agent.dubbo.consumer;
 
-import com.alibaba.dubbo.performance.demo.agent.dubbo.agent.server.ProviderAgentServer;
+import com.alibaba.dubbo.performance.demo.agent.cluster.loadbalance.LoadBalance;
+import com.alibaba.dubbo.performance.demo.agent.cluster.loadbalance.WeightRoundRobinLoadBalance;
+import com.alibaba.dubbo.performance.demo.agent.dubbo.agent.consumer.NormalClient;
+import com.alibaba.dubbo.performance.demo.agent.registry.EtcdRegistry;
+import com.alibaba.dubbo.performance.demo.agent.registry.IRegistry;
+import com.alibaba.dubbo.performance.demo.agent.rpc.Endpoint;
+import com.alibaba.dubbo.performance.demo.agent.transport.Client;
 import io.netty.bootstrap.ServerBootstrap;
+import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
-import io.netty.handler.logging.LogLevel;
-import io.netty.handler.logging.LoggingHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.List;
 
 /**
  * @author 徐靖峰[OF2938]
@@ -34,26 +41,32 @@ import org.slf4j.LoggerFactory;
  */
 public final class ConsumerAgentHttpServer {
 
-    Logger logger = LoggerFactory.getLogger(ConsumerAgentHttpServer.class);
+    private Logger logger = LoggerFactory.getLogger(ConsumerAgentHttpServer.class);
 
-    EventLoopGroup bossGroup = new NioEventLoopGroup();
-    EventLoopGroup workerGroup = new NioEventLoopGroup();
+    private EventLoopGroup bossGroup = new NioEventLoopGroup(1);
+    private EventLoopGroup workerGroup = new NioEventLoopGroup();
 
     private ServerBootstrap bootstrap;
 
     static final int PORT = Integer.parseInt(System.getProperty("server.port"));
 
+    /**
+     * 启动服务器接收来自 consumer 的 http 请求
+     */
     public void startServer() {
         try {
+            Client client = new NormalClient();
+            client.init();
+
             bootstrap = new ServerBootstrap();
             bootstrap.option(ChannelOption.SO_BACKLOG, 1024);
             bootstrap.group(bossGroup, workerGroup)
                     .channel(NioServerSocketChannel.class)
-//                    .handler(new LoggingHandler(LogLevel.INFO))
-                    .childHandler(new ConsumerAgentHttpServerInitializer());
-
+                    .childHandler(new ConsumerAgentHttpServerInitializer(client))
+                    .childOption(ChannelOption.SO_KEEPALIVE, true)
+                    .childOption(ChannelOption.TCP_NODELAY, true);
             Channel ch = bootstrap.bind(PORT).sync().channel();
-            logger.info("consumer-agent server is ready to receive request from consumer\n" +
+            logger.info("consumer-agent provider is ready to receive request from consumer\n" +
                     "export at http://127.0.0.1:{}", PORT);
             ch.closeFuture().sync();
         } catch (Exception e) {
@@ -61,7 +74,8 @@ public final class ConsumerAgentHttpServer {
         } finally {
             bossGroup.shutdownGracefully();
             workerGroup.shutdownGracefully();
-            logger.info("consumer-agent server was closed");
+            logger.info("consumer-agent provider was closed");
         }
     }
+
 }

@@ -1,5 +1,7 @@
 package com.alibaba.dubbo.performance.demo.agent.registry;
 
+import com.alibaba.dubbo.performance.demo.agent.rpc.Endpoint;
+
 import java.util.List;
 
 public interface IRegistry {
@@ -8,9 +10,4 @@ public interface IRegistry {
     void register(String serviceName, int port) throws Exception;
 
     List<Endpoint> find(String serviceName) throws Exception;
-
-    List<Endpoint> getEndpoints();
-
-    List<Endpoint> getEndpoints(String serviceName);
-
 }

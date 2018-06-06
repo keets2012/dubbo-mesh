@@ -1,5 +1,6 @@
 package com.alibaba.dubbo.performance.demo.agent.registry;
 
+import com.alibaba.dubbo.performance.demo.agent.rpc.Endpoint;
 import com.coreos.jetcd.Client;
 import com.coreos.jetcd.KV;
 import com.coreos.jetcd.Lease;
@@ -9,19 +10,12 @@ import com.coreos.jetcd.options.GetOption;
 import com.coreos.jetcd.options.PutOption;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.actuate.endpoint.SystemPublicMetrics;
-import org.springframework.boot.actuate.metrics.Metric;
+import org.springframework.util.StringUtils;
 
 import java.text.MessageFormat;
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
 
 public class EtcdRegistry implements IRegistry {
     private Logger logger = LoggerFactory.getLogger(EtcdRegistry.class);
@@ -33,17 +27,8 @@ public class EtcdRegistry implements IRegistry {
     private Lease lease;
     private KV kv;
     private long leaseId;
-    private final AtomicLong fetchRegistryGeneration;
-    private final int leaseInterval;
-    private final AtomicReference<Map<String, List<Endpoint>>> localRegistry = new AtomicReference<>();
 
-    private List<Endpoint> endpoints;
-    private final SystemPublicMetrics systemPublicMetrics;
-
-    public EtcdRegistry(String registryAddress, SystemPublicMetrics systemPublicMetrics, int interval) {
-        this.leaseInterval = interval;
-        this.systemPublicMetrics = systemPublicMetrics;
-        fetchRegistryGeneration = new AtomicLong(0);
+    public EtcdRegistry(String registryAddress) {
         Client client = Client.builder().endpoints(registryAddress).build();
         this.lease = client.getLeaseClient();
         this.kv = client.getKVClient();
@@ -54,58 +39,36 @@ public class EtcdRegistry implements IRegistry {
         }
 
         keepAlive();
-        // 获取注册表的信息
 
-
-        try {
-            fetchRegistry(true);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        // TODO 2018-05-23 建议后面使用watch机制，避免每次全量更新
-        // 30s更新一次全量的本地注册表
-        FetchRegistryTask fetchRegistryTask = new FetchRegistryTask(this, 8);
-        fetchRegistryTask.start(leaseInterval);
         String type = System.getProperty("type");   // 获取type参数
         if ("provider".equals(type)) {
             // 如果是provider，去etcd注册服务
             try {
                 int port = Integer.valueOf(System.getProperty("server.port"));
                 register("com.alibaba.dubbo.performance.demo.provider.IHelloService", port + 50);
-                // 30s重新注册一次
-                SystemInfoReplicator systemInfoReplicator = new SystemInfoReplicator(this, leaseInterval, "com.alibaba.dubbo.performance.demo.provider.IHelloService", port + 50);
-                systemInfoReplicator.start(leaseInterval);
-                logger.info("provider-agent server register to etcd at port {}", port + 50);
+                logger.info("provider-agent provider register to etcd at port {}",port + 50);
             } catch (Exception e) {
                 e.printStackTrace();
             }
         }
     }
 
-
     // 向ETCD中注册服务
     public void register(String serviceName, int port) throws Exception {
         // 服务注册的key为:    /dubbomesh/com.some.package.IHelloService/192.168.100.100:2000
         String strKey = MessageFormat.format("/{0}/{1}/{2}:{3}", rootPath, serviceName, IpHelper.getHostIp(), String.valueOf(port));
         ByteSequence key = ByteSequence.fromString(strKey);
-        ByteSequence val = ByteSequence.fromString(getSystemLoad());     // 目前只需要创建这个key,对应的value暂不使用,先留空
-        kv.put(key, val, PutOption.newBuilder().withLeaseId(leaseId).build()).get();
-        logger.info("Register a new service at:" + strKey);
-    }
-
-    private String getSystemLoad() {
-        Collection<Metric<?>> metrics = systemPublicMetrics.metrics();
-        Optional<Metric<?>> freeMemoryMetric = metrics.stream()
-                .filter(t -> "mem.free".equals(t.getName()))
-                .findFirst();
-
-        if (!freeMemoryMetric.isPresent()) {
-            System.out.println("can not get memory");
+        String weight = System.getProperty("lb.weight");
+        ByteSequence val;
+        if(StringUtils.isEmpty(weight)){
+            weight = "1";
+            val = ByteSequence.fromString(weight);
+            logger.warn("未设置provider权重，默认设置为1");
+        }else{
+            val = ByteSequence.fromString(weight);
         }
-        long freeMemory = freeMemoryMetric.get()
-                .getValue()
-                .longValue();
-        return String.valueOf(freeMemory);
+        kv.put(key, val, PutOption.newBuilder().withLeaseId(leaseId).build()).get();
+        logger.info("Register a new service at:{},weight:{}", strKey,weight);
     }
 
     // 发送心跳到ETCD,表明该host是活着的
@@ -135,65 +98,16 @@ public class EtcdRegistry implements IRegistry {
             String s = kv.getKey().toStringUtf8();
             int index = s.lastIndexOf("/");
             String endpointStr = s.substring(index + 1, s.length());
+
             String host = endpointStr.split(":")[0];
             int port = Integer.valueOf(endpointStr.split(":")[1]);
-            String cpu = kv.getValue().toStringUtf8();
-            endpoints.add(new Endpoint(host, port, cpu, serviceName));
+            int weight = Integer.parseInt(kv.getValue().toStringUtf8());
+            Endpoint endpoint = new Endpoint(host,port);
+            endpoint.setWeight(weight);
+            endpoints.add(endpoint);
         }
-        this.endpoints = endpoints;
+        logger.info("endpoints size:{}",endpoints.size());
+        logger.info("endpoints contents:{}",endpoints.toString());
         return endpoints;
     }
-
-    @Override
-    public List<Endpoint> getEndpoints() {
-        return this.endpoints;
-    }
-
-    @Override
-    public List<Endpoint> getEndpoints(String serviceName) {
-        return this.localRegistry.get().get(serviceName);
-    }
-
-    public boolean fetchRegistry(boolean forceFullRegistryFetch) throws Exception {
-        // 全量拉取
-        if (forceFullRegistryFetch) {
-            getAndStoreFullRegistry();
-            logger.info("Fetch full registry");
-            // 增量式拉取
-        } else {
-            getAndUpdateDelta();
-        }
-        return true;
-    }
-
-    private void getAndStoreFullRegistry() throws Exception {
-        long currentGeneration = fetchRegistryGeneration.get();
-        String strKey = MessageFormat.format("/{0}", rootPath);
-        ByteSequence key = ByteSequence.fromString(strKey);
-        GetResponse response = kv.get(key, GetOption.newBuilder().withPrefix(key).build()).get();
-
-        // TODO 2018-05-23 建议使用ConcurrentHashMap
-        Map<String, List<Endpoint>> registry = new HashMap<>();
-        for (com.coreos.jetcd.data.KeyValue kv : response.getKvs()) {
-            String s = kv.getKey().toStringUtf8();
-            String[] endpointInfos = s.split("/");
-            String serviceName = endpointInfos[2];
-            List<Endpoint> endpoints = registry.computeIfAbsent(serviceName, k -> new ArrayList<>());
-            String endpointStr = endpointInfos[3];
-            String host = endpointStr.split(":")[0];
-            int port = Integer.valueOf(endpointStr.split(":")[1]);
-            String cpu = kv.getValue().toStringUtf8();
-            endpoints.add(new Endpoint(host, port, cpu, serviceName));
-        }
-        if (fetchRegistryGeneration.compareAndSet(currentGeneration, currentGeneration + 1)) {
-            localRegistry.set(registry);
-        }
-    }
-
-    //TODO 2018-05-23 建议该方法使用watch监听注册表变化，实现增量式刷新
-    private void getAndUpdateDelta() {
-
-    }
-
-
 }

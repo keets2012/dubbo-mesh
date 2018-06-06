@@ -15,30 +15,28 @@
  */
 package com.alibaba.dubbo.performance.demo.agent.dubbo.consumer;
 
+import com.alibaba.dubbo.performance.demo.agent.cluster.loadbalance.LoadBalance;
+import com.alibaba.dubbo.performance.demo.agent.dubbo.agent.consumer.NormalClient;
+import com.alibaba.dubbo.performance.demo.agent.transport.Client;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpRequestDecoder;
 import io.netty.handler.codec.http.HttpResponseEncoder;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
-
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 /**
  * @author 徐靖峰[OF2938]
  * company qianmi.com
  * Date 2018-05-22
  */
-@Component
 public class ConsumerAgentHttpServerInitializer extends ChannelInitializer<SocketChannel> {
 
-    @Autowired
-    private ConsumerClient consumerClient;
+    private Client client;
 
-    ExecutorService executorService = Executors.newFixedThreadPool(128);
+    ConsumerAgentHttpServerInitializer(Client client){
+        this.client = client;
+    }
 
     @Override
     public void initChannel(SocketChannel ch) {
@@ -46,6 +44,6 @@ public class ConsumerAgentHttpServerInitializer extends ChannelInitializer<Socke
         p.addLast("encoder", new HttpResponseEncoder());
         p.addLast("decoder", new HttpRequestDecoder());
         p.addLast("aggregator", new HttpObjectAggregator(10 * 1024 * 1024));
-        p.addLast(new ConsumerAgentHttpServerHandler(consumerClient, executorService));
+        p.addLast(new ConsumerAgentHttpServerHandler(client));
     }
 }

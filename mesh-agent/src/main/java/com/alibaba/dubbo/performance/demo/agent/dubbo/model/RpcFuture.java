@@ -8,7 +8,7 @@ import java.util.concurrent.TimeUnit;
 public class RpcFuture implements Future<Object> {
     private CountDownLatch latch = new CountDownLatch(1);
 
-    private ProviderAgentRpcResponse response;
+    private DubboRpcResponse response;
 
     @Override
     public boolean cancel(boolean mayInterruptIfRunning) {
@@ -27,7 +27,6 @@ public class RpcFuture implements Future<Object> {
 
     @Override
     public Object get() throws InterruptedException {
-        //boolean b = latch.await(100, TimeUnit.MICROSECONDS);
         latch.await();
         try {
             return response.getBytes();
@@ -43,7 +42,7 @@ public class RpcFuture implements Future<Object> {
         return response.getBytes();
     }
 
-    public void done(ProviderAgentRpcResponse response) {
+    public void done(DubboRpcResponse response) {
         this.response = response;
         latch.countDown();
     }
