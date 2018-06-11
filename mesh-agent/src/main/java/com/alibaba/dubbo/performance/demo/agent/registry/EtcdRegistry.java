@@ -46,7 +46,7 @@ public class EtcdRegistry implements IRegistry {
             try {
                 int port = Integer.valueOf(System.getProperty("server.port"));
                 register("com.alibaba.dubbo.performance.demo.provider.IHelloService", port + 50);
-                logger.info("provider-agent provider register to etcd at port {}",port + 50);
+                logger.info("provider-agent provider register to etcd at port {}", port + 50);
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -60,15 +60,15 @@ public class EtcdRegistry implements IRegistry {
         ByteSequence key = ByteSequence.fromString(strKey);
         String weight = System.getProperty("lb.weight");
         ByteSequence val;
-        if(StringUtils.isEmpty(weight)){
+        if (StringUtils.isEmpty(weight)) {
             weight = "1";
             val = ByteSequence.fromString(weight);
             logger.warn("未设置provider权重，默认设置为1");
-        }else{
+        } else {
             val = ByteSequence.fromString(weight);
         }
         kv.put(key, val, PutOption.newBuilder().withLeaseId(leaseId).build()).get();
-        logger.info("Register a new service at:{},weight:{}", strKey,weight);
+        logger.info("Register a new service at:{},weight:{}", strKey, weight);
     }
 
     // 发送心跳到ETCD,表明该host是活着的
@@ -93,7 +93,7 @@ public class EtcdRegistry implements IRegistry {
         GetResponse response = kv.get(key, GetOption.newBuilder().withPrefix(key).build()).get();
 
         List<Endpoint> endpoints = new ArrayList<>();
-
+//        int i = 20880;
         for (com.coreos.jetcd.data.KeyValue kv : response.getKvs()) {
             String s = kv.getKey().toStringUtf8();
             int index = s.lastIndexOf("/");
@@ -102,12 +102,14 @@ public class EtcdRegistry implements IRegistry {
             String host = endpointStr.split(":")[0];
             int port = Integer.valueOf(endpointStr.split(":")[1]);
             int weight = Integer.parseInt(kv.getValue().toStringUtf8());
-            Endpoint endpoint = new Endpoint(host,port);
+            Endpoint endpoint = new Endpoint(host, port);
+//            Endpoint endpoint = new Endpoint(host,i);
+//            i++;
             endpoint.setWeight(weight);
             endpoints.add(endpoint);
         }
-        logger.info("endpoints size:{}",endpoints.size());
-        logger.info("endpoints contents:{}",endpoints.toString());
+        logger.info("endpoints size:{}", endpoints.size());
+        logger.info("endpoints contents:{}", endpoints.toString());
         return endpoints;
     }
 }
